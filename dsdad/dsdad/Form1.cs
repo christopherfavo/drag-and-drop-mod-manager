@@ -178,6 +178,8 @@ namespace dsdad
                 return;
             }
 
+            specialCases();
+
             List<byte[]> backup = new List<byte[]>
             {
                 File.ReadAllBytes(dsdir + "\\dvdbnd0.bhd5"),
@@ -210,10 +212,13 @@ namespace dsdad
 
             int matching = -1;
 
-            if (listView1.Items.Count == 0) loadFolder(dsdir);
+            if (listView1.Items.Count == 0 || checkBox1.Checked) loadFolder(dsdir);
 
             Log("Preparing to install " + listView1.Items.Count + " mods.\r\n");
             Log("line");
+
+            List<UInt32> special = new List<UInt32>(new UInt32[7]);
+            List<string> possibleDSFixSpecial = new List<string> { };
 
             foreach (ListViewItem mod in listView1.Items)
             {
@@ -226,6 +231,8 @@ namespace dsdad
                     {
                         if (Path.GetFileName(mod.Text) == Path.GetFileName(filenames[id]))
                         {
+                            checkIfSpecialCase(Path.GetFileName(mod.Text), ref special, ref id);
+
                             Log("Found \"" + Path.GetFileName(mod.Text) + "\" in the filenames list at line " + id + ".\r\n");
                             matching = id;
                             l = true;
@@ -235,14 +242,27 @@ namespace dsdad
 
                     if (!l)
                     {
-                        text = "Did not find \"" + Path.GetFileName(mod.Text) + "\" in the filenames list. Ignoring file.\r\n";
+                        text = "Did not find \"" + Path.GetFileName(mod.Text) + "\" in the filenames list. ";
+                        string ext = Path.GetExtension(mod.Text);
+
+                        if (ext == ".png" || ext == ".dds" || ext == ".jpg" || ext == ".tga" || ext == ".bmp")
+                        {
+                            possibleDSFixSpecial.Add(mod.Text);
+                            text += "Handling as possible DSFix texture mod.\r\n";
+                        }
+                        else
+                        {
+                            text += "Ignoring file.\r\n";
+                        }
+
                         Log(text);
                         log.Text += text;
+                        Log("line");
                         matching = -1;
                     }
 
                     if (matching != -1)
-                    {
+                    {                        
                         UInt32 hash = BHD5.GetHash(filenames[matching]);
                         Log("Hash for \"" + Path.GetFileName(filenames[matching]) + "\" is: " + hash + "\r\n");
 
@@ -306,7 +326,39 @@ namespace dsdad
                     Log(text);
                     log.Text += text;
                 }
+            }
 
+            foreach (string dsfixmod in possibleDSFixSpecial)
+            {
+                string path = Path.Combine(dsdir, "dsfix\\tex_override\\" + Path.GetFileName(dsfixmod));
+
+                if (File.Exists(path))
+                {
+                    if (!File.Exists(path + ".bak"))
+                    {
+                        File.Copy(path, path + ".bak");
+                    }
+                    File.Delete(path);
+                }
+                if (File.Exists(dsfixmod))
+                {
+                    File.Copy(dsfixmod, path);
+                    Log("Placed possible DSFix texture mod \"" + dsfixmod + "\" into \"dsfix\\tex_override\".\r\n");
+                }
+                else
+                {
+                    Log("\"" + dsfixmod + "\" does not exist, could not be installed.\r\n");
+                }               
+            }
+
+            if (possibleDSFixSpecial.Count != 0)
+            {
+                text = "DSFix mods installed. Note that for these mods to show up in-game, you still have to manually set \"enableTextureOverride\" in \"DSFix.ini\".\r\n";
+
+                Log("line");
+                Log(text);
+                log.Text += text;
+                Log("line");
             }
 
             for (int i = 0; i < 4; i++)
@@ -351,6 +403,18 @@ namespace dsdad
                 {
                     Log("No need to restore \"dvdbnd" + i + ".bhd5\" and \"dvdbnd" + i + ".bdt\" as they were not modified.\r\n");
                 }
+            }
+
+            if (possibleDSFixSpecial.Count != 0) Log("line");
+
+            foreach (string dsfixmod in possibleDSFixSpecial)
+            {
+                string path = Path.Combine(dsdir, "dsfix\\tex_override\\" + Path.GetFileName(dsfixmod));
+
+                if (File.Exists(path)) File.Delete(path);
+                if (File.Exists(path + ".bak")) File.Copy(path + ".bak", path);                
+
+                Log("Deleted possible DSFix texture mod \"" + Path.GetFileName(dsfixmod) + "\" from \"dsfix\\tex_override\".\r\n");
             }
 
             GC.Collect();
@@ -617,7 +681,8 @@ namespace dsdad
 
         private void loadFolder(string path)
         {
-            Log("No files were added to the program. Loading mods from \"\\dadmod\".\r\n");
+            if (!checkBox1.Checked) Log("No files were added to the program. Loading mods from \"\\dadmod\".\r\n");
+            else Log("Loading extra mod files from \"\\dadmod\".\r\n");
             log.Text += "Loading mods from \"\\dadmod.\"\n";
 
             panel1.Visible = false;
@@ -656,12 +721,20 @@ namespace dsdad
 
                     foreach (string line in setup)
                     {
+                        foreach (ListViewItem setupmod in listView1.Items)
+                        {
+                            if (Path.GetFileName(line) == Path.GetFileName(setupmod.Text)) setupmod.Remove();
+                        }
                         listView1.Items.Add(line);
                     }
                     Log("Loading Mod Setup\"" + Path.GetFileName(mod) + "\"\r\n");
                 }
                 else
                 {
+                    foreach (ListViewItem setupmod in listView1.Items)
+                    {
+                        if (Path.GetFileName(mod) == Path.GetFileName(setupmod.Text)) setupmod.Remove();
+                    }
                     listView1.Items.Add(mod);
                 }
                 Log("Loading \"" + mod + "\"\r\n");
@@ -846,6 +919,188 @@ namespace dsdad
             }
 
             return l;
+        }
+
+        private void specialCases()
+        {
+            List<string> item, menu, local, talkccm, talktpf, dsccm, dstpf;
+
+            item = new List<string> { };
+            menu = new List<string> { };
+            local = new List<string> { };
+            talkccm = new List<string> { };
+            talktpf = new List<string> { };
+            dsccm = new List<string> { };
+            dstpf = new List<string> { };
+
+            foreach (ListViewItem mod in listView1.Items)
+            {
+                switch (Path.GetFileName(mod.Text))
+                {
+                    case "item.msgbnd.dcx": item.Add(mod.Text);
+                        break;
+                    case "menu.msgbnd.dcx": menu.Add(mod.Text);
+                        break;
+                    case "DSFont24.ccm.dcx": dsccm.Add(mod.Text);
+                        break;
+                    case "DSFont24.tpf.dcx": dstpf.Add(mod.Text);
+                        break;
+                    case "TalkFont24.ccm.dcx": talkccm.Add(mod.Text);
+                        break;
+                    case "TalkFont24.tpf.dcx": talktpf.Add(mod.Text);
+                        break;
+                    case "menu_local.tpf.dcx": local.Add(mod.Text);
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            int count = item.Count;
+            if (item.Count != 0 && item.Count < 10)
+            {                
+                for (int i = count; i < 10; i++)
+                {
+                    listView1.Items.Add(item[0]);
+                }
+                Log("Special case found: \"item.msgbnd.dcx\" requires multiple installs. (10 total)\r\n");
+            }
+            
+            count = menu.Count;
+            if (menu.Count != 0 && menu.Count < 10)
+            {                
+                for (int i = count; i < 10; i++)
+                {
+                    listView1.Items.Add(menu[0]);
+                }
+                Log("Special case found: \"menu.msgbnd.dcx\" requires multiple installs. (10 total)\r\n");
+            }
+            
+            count = local.Count;
+            if (local.Count != 0 && local.Count < 9)
+            {
+                for (int i = count; i < 9; i++)
+                {
+                    listView1.Items.Add(local[0]);
+                }
+                Log("Special case found: \"menu_local.tpf.dcx\", requires multiple installs. (9 total)\r\n");
+            }
+
+            count = talkccm.Count;
+            if (talkccm.Count != 0 && talkccm.Count < 5)
+            {                
+                for (int i = count; i < 5; i++)
+                {
+                    listView1.Items.Add(talkccm[0]);
+                }
+                Log("Special case found: \"TalkFont24.ccm.dcx\", requires multiple installs. (5 total)\r\n");
+            }
+
+            count = talktpf.Count;
+            if (talktpf.Count != 0 && talktpf.Count < 5)
+            {                
+                for (int i = count; i < 5; i++)
+                {
+                    listView1.Items.Add(talktpf[0]);
+                }
+                Log("Special case found: \"TalkFont24.tpf.dcx\", requires multiple installs. (5 total)\r\n");
+            }
+
+            count = dsccm.Count;
+            if (dsccm.Count != 0 && dsccm.Count < 5)
+            {
+                for (int i = count; i < 5; i++)
+                {
+                    listView1.Items.Add(dsccm[0]);
+                }
+                Log("Special case found: \"DSFont24.ccm.dcx\", requires multiple installs. (5 total)\r\n");
+            }
+
+            count = dstpf.Count;
+            if (dstpf.Count != 0 && dstpf.Count < 5)
+            {                
+                for (int i = count; i < 5; i++)
+                {
+                    listView1.Items.Add(dstpf[0]);
+                }
+                Log("Special case found: \"DSFont24.tpf.dcx\", requires multiple installs. (5 total)\r\n");
+            }
+        }
+
+        private void checkIfSpecialCase(string name, ref List<UInt32> list, ref int matching)
+        {
+            switch (name)
+            {
+                case "item.msgbnd.dcx":
+                    if (list[0] < 20)
+                    {
+                        matching += (int)list[0];
+                        list[0] += 2;
+                    }
+                    break;
+                case "menu.msgbnd.dcx":
+                    if (list[1] < 20)
+                    {
+                        matching += (int)list[1];
+                        list[1] += 2;
+                    }
+                    break;
+                case "DSFont24.ccm.dcx":
+                    if (list[2] < 25)
+                    {
+                        matching += (int)list[2];
+                        list[2] += 4;
+                    }
+                    break;
+                case "DSFont24.tpf.dcx":
+                    if (list[3] < 25)
+                    {
+                        matching += (int)list[3];
+                        list[3] += 4;
+                    }
+                    break;
+                case "TalkFont24.ccm.dcx":
+                    if (list[4] < 25)
+                    {
+                        matching += (int)list[4];
+                        list[4] += 4;
+                    }
+                    break;
+                case "TalkFont24.tpf.dcx":
+                    if (list[5] < 25)
+                    {
+                        matching += (int)list[5];
+                        list[5] += 4;
+                    }
+                    break;
+                case "menu_local.tpf.dcx":
+                    matching += (int)list[6];
+
+                    switch (list[6])
+                    {
+                        case 0: list[6] = 4;
+                            break;
+                        case 4: list[6] = 5;
+                            break;
+                        case 5: list[6] = 8;
+                            break;
+                        case 8: list[6] = 9;
+                            break;
+                        case 9: list[6] = 22;
+                            break;
+                        case 22: list[6] = 23;
+                            break;
+                        case 23: list[6] = 24;
+                            break;
+                        case 24: list[6] = 25;
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
     }
 }

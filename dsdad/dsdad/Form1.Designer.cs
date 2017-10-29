@@ -57,6 +57,7 @@
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.openFileDialog2 = new System.Windows.Forms.OpenFileDialog();
+            this.checkBox1 = new System.Windows.Forms.CheckBox();
             this.menuStrip1.SuspendLayout();
             this.panel1.SuspendLayout();
             this.SuspendLayout();
@@ -258,9 +259,9 @@
             // button4
             // 
             this.button4.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.button4.Location = new System.Drawing.Point(509, 262);
+            this.button4.Location = new System.Drawing.Point(509, 266);
             this.button4.Name = "button4";
-            this.button4.Size = new System.Drawing.Size(167, 50);
+            this.button4.Size = new System.Drawing.Size(167, 46);
             this.button4.TabIndex = 6;
             this.button4.Text = "Launch Dark Souls w/ mods";
             this.button4.UseVisualStyleBackColor = true;
@@ -335,10 +336,23 @@
     "(*.msb)|*.msb|Mod Setup (*.stp)|*.stp";
             this.openFileDialog2.Multiselect = true;
             // 
+            // checkBox1
+            // 
+            this.checkBox1.AutoSize = true;
+            this.checkBox1.Checked = true;
+            this.checkBox1.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkBox1.Location = new System.Drawing.Point(423, 234);
+            this.checkBox1.Name = "checkBox1";
+            this.checkBox1.Size = new System.Drawing.Size(323, 38);
+            this.checkBox1.TabIndex = 11;
+            this.checkBox1.Text = "Load mods from \"\\dadmod\", even if Mod Setup\r\nisn\'t empty.";
+            this.checkBox1.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.ClientSize = new System.Drawing.Size(688, 321);
+            this.Controls.Add(this.checkBox1);
             this.Controls.Add(this.button3);
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.button5);
@@ -393,6 +407,7 @@
         private System.Windows.Forms.OpenFileDialog openFileDialog2;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem2;
         private System.Windows.Forms.ToolStripMenuItem restoreDarkSoulsToolStripMenuItem;
+        private System.Windows.Forms.CheckBox checkBox1;
     }
 }
 
