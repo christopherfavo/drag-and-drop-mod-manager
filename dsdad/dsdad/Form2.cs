@@ -61,7 +61,7 @@ namespace dsdad
                             MessageBox.Show("An error occured while trying to create/write \"\\Workspace\\settings.config\"");
                         }
 
-                        createBak(path);
+                        //createBak(path);
                         
                         this.Close();
                     }
@@ -98,6 +98,7 @@ namespace dsdad
             }
         }
 
+        /*
         public void createBak(string path)
         {
             string dsdir = Path.GetDirectoryName(path);
@@ -147,5 +148,6 @@ namespace dsdad
                 }
             }
         }
+        */
     }
 }

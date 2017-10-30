@@ -63,22 +63,6 @@ namespace dsdad
 
             Form2 settings = new Form2();
             if (!File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Workspace\\settings.config"))) settings.ShowDialog();
-
-            /*
-            if (File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Workspace\\log.txt")))
-            {
-                string[] lines = File.ReadAllLines(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Workspace\\log.txt"));
-                if (lines.Length > 1)
-                {
-                    if (lines[lines.Length - 1].Substring(9) != "Program terminated successfully.")
-                    {
-                        MessageBox.Show("DSDAD crashed while DS was running. DSDAD will attempt to restore the dvdbnd libraries from backup files.\n\nThis operation will take a while.");
-
-                        restoreCrashBackup();
-                    }
-                }
-            }
-            */
         }
 
 
@@ -178,8 +162,6 @@ namespace dsdad
                 return;
             }
 
-            specialCases();
-
             List<byte[]> backup = new List<byte[]>
             {
                 File.ReadAllBytes(dsdir + "\\dvdbnd0.bhd5"),
@@ -196,13 +178,36 @@ namespace dsdad
                 BHD5.GetBhd5Data(dsdir + "\\dvdbnd3.bhd5")
             };
 
-            List<UInt64> initArchiveSize = new List<UInt64>
+            string[] initArchiveSize = new string[4]
             {
-                (UInt64)new FileInfo(dsdir + "\\dvdbnd0.bdt").Length,
-                (UInt64)new FileInfo(dsdir + "\\dvdbnd1.bdt").Length,
-                (UInt64)new FileInfo(dsdir + "\\dvdbnd2.bdt").Length,
-                (UInt64)new FileInfo(dsdir + "\\dvdbnd3.bdt").Length
+                new FileInfo(dsdir + "\\dvdbnd0.bdt").Length.ToString(),
+                new FileInfo(dsdir + "\\dvdbnd1.bdt").Length.ToString(),
+                new FileInfo(dsdir + "\\dvdbnd2.bdt").Length.ToString(),
+                new FileInfo(dsdir + "\\dvdbnd3.bdt").Length.ToString()
             };
+
+            if (!Directory.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Workspace\\backup")))
+            {
+                try
+                {
+                    Directory.CreateDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Workspace\\backup"));
+                }
+                catch
+                {
+                    Log("\"Workspace\\backup\" is missing, and could not create it. Could not create backup files for crashDetect to restore from.\r\n");
+                    Log("line");
+                }
+            }
+
+            if (Directory.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Workspace\\backup")))
+            {
+                File.WriteAllLines(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Workspace\\backup\\initarchivesize.txt"), initArchiveSize);
+
+                for (int i = 0; i < 4; i++)
+                {
+                    File.WriteAllBytes(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Workspace\\backup\\dvdbnd" + i + ".bhd5"), backup[i]);
+                }
+            }
 
             List<bool> modifiedBhd5 = new List<bool>(new bool[4]);
 
@@ -213,6 +218,8 @@ namespace dsdad
             int matching = -1;
 
             if (listView1.Items.Count == 0 || checkBox1.Checked) loadFolder(dsdir);
+
+            specialCases();
 
             Log("Preparing to install " + listView1.Items.Count + " mods.\r\n");
             Log("line");
@@ -393,7 +400,7 @@ namespace dsdad
                     Log("Restored \"dvdbnd" + i + ".bhd5\"\r\n");
 
                     FileStream bdt = new FileStream(dsdir + "\\dvdbnd" + i + ".bdt", FileMode.Open);
-                    bdt.SetLength((Int64)initArchiveSize[i]);
+                    bdt.SetLength(long.Parse(initArchiveSize[i]));
 
                     bdt.Close();
 
@@ -445,8 +452,7 @@ namespace dsdad
                     {
                         listView1.Items.Add(mod);
                     }
-                }
-                
+                }                
             }
 
             panel1.Visible = listView1.Items.Count == 0;
@@ -592,9 +598,8 @@ namespace dsdad
                     if (lines[lines.Length - 1].Substring(9) != "Program terminated successfully.")
                     {
                         log.Text += "Attempting to restore dvdbnd libraries...\nPlease wait.\n";
-                        MessageBox.Show("DSDAD crashed while DS was running. DSDAD will attempt to restore the dvdbnd libraries from backup files.\n\nThis operation will take a while.");
-
-                        restoreCrashBackup();
+                        DialogResult dialogResult = MessageBox.Show("DSDAD crashed while DS was running. DSDAD will attempt to restore the dvdbnd libraries from backup files.\n\nThis operation will take a while. Continue?", "Crash Detected", MessageBoxButtons.OKCancel);
+                        if (dialogResult == DialogResult.OK)  restoreCrashBackup();
                     }
                 }
             }
@@ -612,64 +617,84 @@ namespace dsdad
                 if (File.Exists(dsdir) & Path.GetFileName(dsdir) == "DARKSOULS.exe")
                 {
                     dsdir = Path.GetDirectoryName(dsdir);
-                    string cannot = "Cannot restore the following:\n";
-                    bool l = false;
+                    string appdir = "";
 
-                    for (int i = 0; i < 4; i++)
+                    if (Directory.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Workspace\\backup\\")))
                     {
-                        string dvdbnd = Path.Combine(dsdir, "dvdbnd" + i);
+                        appdir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Workspace\\backup\\dvdbnd");
 
-                        if (File.Exists(dvdbnd + ".bhd5.bak"))
+                        if (File.Exists(appdir + 0 + ".bhd5") && File.Exists(appdir + 1 + ".bhd5") && File.Exists(appdir + 2 + ".bhd5") && File.Exists(appdir + 3 + ".bhd5"))
                         {
-                            try
+                            for (int i = 0; i < 4; i++)
                             {
-                                File.Delete(dvdbnd + ".bhd5");
-                                File.Copy(dvdbnd + ".bhd5.bak", dvdbnd + ".bhd5");
-                            }
-                            catch
-                            {
-                                MessageBox.Show("Could not restore backup files. Restoration has to be done manually.");
-                                return;
-                            }
+                                string dvdbnd = Path.Combine(dsdir, "dvdbnd" + i);
+                                byte[] bhd5 = new byte[] { };
 
-                            log.Text += "Restored \"" + Path.GetFileName(dvdbnd + ".bhd5") + "\"\n";
+                                try
+                                {
+                                    bhd5 = File.ReadAllBytes(appdir + i + ".bhd5");
+                                    File.WriteAllBytes(dvdbnd + ".bhd5", bhd5);
+                                }
+                                catch
+                                {
+                                    MessageBox.Show("Could not restore backup files. Restoration has to be done manually.");
+                                    return;
+                                }
+                                log.Text += "Restored \"" + Path.GetFileName(dvdbnd + ".bhd5") + "\"\n";
+                            }
                         }
                         else
                         {
-                            cannot += "-\"" + Path.GetFileName(dvdbnd + ".bhd5") + "\"\n";
-                            l = true;
+                            MessageBox.Show("Cannot restore dvdbnd.bhd5 header files as their backup files are missing from \"Workspace\\backup\"");
                         }
 
-                        if (File.Exists(dvdbnd + ".bdt.bak"))
+                        if (File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Workspace\\backup\\initarchivesize.txt")))
                         {
-                            try
-                            {
-                                File.Delete(dvdbnd + ".bdt");
-                                File.Copy(dvdbnd + ".bdt.bak", dvdbnd + ".bdt");
-                            }
-                            catch
-                            {
-                                MessageBox.Show("Could not restore backup files. Restoration has to be done manually.");
-                                return;
-                            }
+                            string[] initSize = File.ReadAllLines(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Workspace\\backup\\initarchivesize.txt"));
 
-                            log.Text += "Restored \"" + Path.GetFileName(dvdbnd + ".bdt") + "\"\n";
+                            for (int i = 0; i < 4; i++)
+                            {
+                                string dvdbnd = Path.Combine(dsdir, "dvdbnd" + i);
+
+                                try
+                                {
+                                    FileStream bdt = new FileStream(dsdir + "\\dvdbnd" + i + ".bdt", FileMode.Open);
+                                    bdt.SetLength(long.Parse(initSize[i]));
+
+                                    bdt.Close();
+                                }
+                                catch
+                                {
+                                    MessageBox.Show("Could not restore backup files. Restoration has to be done manually.");
+                                    return;
+                                }
+
+                                log.Text += "Restored \"" + Path.GetFileName(dvdbnd + ".bdt") + "\"\n";
+                            }
                         }
                         else
                         {
-                            cannot += "-\"" + Path.GetFileName(dvdbnd + ".bdt") + "\"\n";
-                            l = true;
+                            MessageBox.Show("Cannot uninstall mods from the dvdbnd.bdt libraries, as one of the key backup files (\"Workspace\\backup\\initarchivesize.txt\") is missing.");
                         }
                     }
-                    if (l) MessageBox.Show(cannot + "\nas backup files do not exist for these files.");
                     else
                     {
-                        MessageBox.Show("Backup files restored successfully");
-                        Log("line");
-                        Log("Restore after crash complete. Preventing CrashDetect from tripping falsely:\r\n");
-                        Log("Program terminated successfully.\r\n");
-                    }
+                        MessageBox.Show("\"Workspace\\backup\" does not exist. Cannot restore backups.\nAttempting to create \"Workspace\\backup\"");
+                        try
+                        {
+                            Directory.CreateDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Workspace\\backup\\"));
+                        }
+                        catch
+                        {
+                            MessageBox.Show("Could not create \"Workspace\\backup\".");
+                        }
+                        return;
+                    }                    
 
+                    MessageBox.Show("Backup files restored successfully");
+                    Log("line");
+                    Log("Restore after crash complete. Preventing CrashDetect from tripping falsely:\r\n");
+                    Log("Program terminated successfully.\r\n");
                 }
                 else corrupt = true;
             }
@@ -832,6 +857,7 @@ namespace dsdad
             try
             {
                 Directory.CreateDirectory(Path.Combine(path, "Workspace"));
+                Directory.CreateDirectory(Path.Combine(path, "Workspace\\backup"));
                 File.Create(Path.Combine(path, "Workspace\\settings.config")).Dispose();
                 File.Create(Path.Combine(path, "Workspace\\log.txt")).Dispose();
             }
@@ -853,7 +879,7 @@ namespace dsdad
 
             if (File.Exists(dsdir))
             {
-                settings.createBak(dsdir);
+                //settings.createBak(dsdir);
 
                 dsdir = Path.GetDirectoryName(dsdir);
                 if (!Directory.Exists(Path.Combine(dsdir, "dadmod")))
@@ -955,6 +981,7 @@ namespace dsdad
                         break;
                 }
             }
+            string text = "";
 
             int count = item.Count;
             if (item.Count != 0 && item.Count < 10)
@@ -963,7 +990,9 @@ namespace dsdad
                 {
                     listView1.Items.Add(item[0]);
                 }
-                Log("Special case found: \"item.msgbnd.dcx\" requires multiple installs. (10 total)\r\n");
+                text = "Special case found: \"item.msgbnd.dcx\" requires multiple installs. (10 total)\r\n";
+                Log(text);
+                log.Text += text;
             }
             
             count = menu.Count;
@@ -973,7 +1002,9 @@ namespace dsdad
                 {
                     listView1.Items.Add(menu[0]);
                 }
-                Log("Special case found: \"menu.msgbnd.dcx\" requires multiple installs. (10 total)\r\n");
+                text = "Special case found: \"menu.msgbnd.dcx\" requires multiple installs. (10 total)\r\n";
+                Log(text);
+                log.Text += text;
             }
             
             count = local.Count;
@@ -983,7 +1014,9 @@ namespace dsdad
                 {
                     listView1.Items.Add(local[0]);
                 }
-                Log("Special case found: \"menu_local.tpf.dcx\", requires multiple installs. (9 total)\r\n");
+                text = "Special case found: \"menu_local.tpf.dcx\" requires multiple installs. (9 total)\r\n";
+                Log(text);
+                log.Text += text;
             }
 
             count = talkccm.Count;
@@ -993,7 +1026,9 @@ namespace dsdad
                 {
                     listView1.Items.Add(talkccm[0]);
                 }
-                Log("Special case found: \"TalkFont24.ccm.dcx\", requires multiple installs. (5 total)\r\n");
+                text = "Special case found: \"TalkFont24.ccm.dcx\", requires multiple installs. (5 total)\r\n";
+                Log(text);
+                log.Text += text;
             }
 
             count = talktpf.Count;
@@ -1003,7 +1038,9 @@ namespace dsdad
                 {
                     listView1.Items.Add(talktpf[0]);
                 }
-                Log("Special case found: \"TalkFont24.tpf.dcx\", requires multiple installs. (5 total)\r\n");
+                text = "Special case found: \"TalkFont24.tpf.dcx\", requires multiple installs. (5 total)\r\n";
+                Log(text);
+                log.Text += text;
             }
 
             count = dsccm.Count;
@@ -1013,7 +1050,9 @@ namespace dsdad
                 {
                     listView1.Items.Add(dsccm[0]);
                 }
-                Log("Special case found: \"DSFont24.ccm.dcx\", requires multiple installs. (5 total)\r\n");
+                text = "Special case found: \"DSFont24.ccm.dcx\", requires multiple installs. (5 total)\r\n";
+                Log(text);
+                log.Text += text;
             }
 
             count = dstpf.Count;
@@ -1023,7 +1062,9 @@ namespace dsdad
                 {
                     listView1.Items.Add(dstpf[0]);
                 }
-                Log("Special case found: \"DSFont24.tpf.dcx\", requires multiple installs. (5 total)\r\n");
+                text = "Special case found: \"DSFont24.tpf.dcx\", requires multiple installs. (5 total)\r\n";
+                Log(text);
+                log.Text += text;
             }
         }
 

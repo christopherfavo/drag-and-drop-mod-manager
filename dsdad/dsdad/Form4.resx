@@ -134,6 +134,7 @@ DSDAD supports, and can install the following formats:
 	-Workspace folder in current directory. Within it:
 		-settings.config
 		-log.txt
+		--backup folder
 
 	-dadmod folder in the "\Dark Souls Prepare to Die Edition\DATA\" directory</value>
   </data>

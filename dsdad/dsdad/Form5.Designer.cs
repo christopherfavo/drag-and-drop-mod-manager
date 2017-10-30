@@ -43,7 +43,7 @@
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(395, 17);
             this.label1.TabIndex = 0;
-            this.label1.Text = "Dark Souls Drag and Drop Mod Manager v1.0.1 (2017.10.29)";
+            this.label1.Text = "Dark Souls Drag and Drop Mod Manager v1.0.2 (2017.10.30)";
             // 
             // label2
             // 
@@ -82,7 +82,7 @@
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(99, 17);
             this.label3.TabIndex = 4;
-            this.label3.Text = "DSDAD v1.0.1";
+            this.label3.Text = "DSDAD v1.0.2";
             // 
             // Form5
             // 
