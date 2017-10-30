@@ -23,3 +23,8 @@ v1.0.1
 * Fixed a similar issue for the following files: "DSFont24.ccm.dcx", "DSFont24.tpf.dcx", "TalkFont24.ccm.dcx", "TalkFont24.tpf.dcx" and "menu_local.tpf.dcx".
 * Added an option to load mods from "DATA\dadmod" even if the Mod Setup isn't empty.
 * Added support for DSFix texture mods. Note that "enableTextureOverride" still has to be set manually, for the mods to show up.
+
+v1.0.2
+------
+* Fixed a minor error where special case mods loaded from "DATA\dadmod" would not be handled as special cases.
+* Revamped the crash handling: auto-backup is safer, and restoration of the bdt archives is much faster.
