@@ -259,9 +259,9 @@
             // button4
             // 
             this.button4.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.button4.Location = new System.Drawing.Point(509, 266);
+            this.button4.Location = new System.Drawing.Point(509, 262);
             this.button4.Name = "button4";
-            this.button4.Size = new System.Drawing.Size(167, 46);
+            this.button4.Size = new System.Drawing.Size(167, 50);
             this.button4.TabIndex = 6;
             this.button4.Text = "Launch Dark Souls w/ mods";
             this.button4.UseVisualStyleBackColor = true;
@@ -338,10 +338,11 @@
             // 
             // checkBox1
             // 
+            this.checkBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.checkBox1.AutoSize = true;
             this.checkBox1.Checked = true;
             this.checkBox1.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.checkBox1.Location = new System.Drawing.Point(423, 234);
+            this.checkBox1.Location = new System.Drawing.Point(353, 222);
             this.checkBox1.Name = "checkBox1";
             this.checkBox1.Size = new System.Drawing.Size(323, 38);
             this.checkBox1.TabIndex = 11;

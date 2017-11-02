@@ -124,9 +124,11 @@ This program offers a quick and simple solution to installing mods to the game, 
 
 DSDAD supports, and can install the following formats:
 
--DCX compressed files (most files are compressed this way, such as PARAM files, FLVER files, FMG files, etc)
+-DCX compressed files (most files are compressed this way, such as PARAM files, FLVER files, FMG files, etc) 
+-As of version 1.0.3, non-DCX compressed files are also supported.
 -FSB files (sound mods)
--MSB files (map layout mods, be that enemy or object replacement)</value>
+-MSB files (map layout mods, be that enemy or object replacement)
+-As of version 1.0.1, DSFix texture mods are also supported (PNG,TGA,DDS,JPG,BMP)</value>
   </data>
   <data name="richTextBox2.Text" xml:space="preserve">
     <value>DSDAD installs the following on it's first run:
@@ -134,7 +136,7 @@ DSDAD supports, and can install the following formats:
 	-Workspace folder in current directory. Within it:
 		-settings.config
 		-log.txt
-		--backup folder
+		-backup folder
 
 	-dadmod folder in the "\Dark Souls Prepare to Die Edition\DATA\" directory</value>
   </data>

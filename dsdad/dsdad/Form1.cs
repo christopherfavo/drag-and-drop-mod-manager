@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
+using System.IO.Compression;
 
 namespace dsdad
 {
@@ -221,7 +222,10 @@ namespace dsdad
 
             specialCases();
 
-            Log("Preparing to install " + listView1.Items.Count + " mods.\r\n");
+            if (listView1.Items.Count == 1) text = "mod.\r\n";
+            else text = "mods.\r\n";
+
+            Log("Preparing to install " + listView1.Items.Count + text);
             Log("line");
 
             List<UInt32> special = new List<UInt32>(new UInt32[7]);
@@ -231,6 +235,7 @@ namespace dsdad
             {
                 bool l = false;
                 int id = 0;
+                bool dcx = true;
 
                 if (File.Exists(mod.Text))
                 {
@@ -242,7 +247,16 @@ namespace dsdad
 
                             Log("Found \"" + Path.GetFileName(mod.Text) + "\" in the filenames list at line " + id + ".\r\n");
                             matching = id;
+                            l = true;                            
+                        }
+                        else if (Path.GetFileName(mod.Text) + ".dcx" == Path.GetFileName(filenames[id]))
+                        {
+                            checkIfSpecialCase(Path.GetFileName(mod.Text) + ".dcx", ref special, ref id);
+
+                            Log("Found DCX version of \"" + Path.GetFileName(mod.Text) + "\" in the filenames list at line " + id + ".\r\n");
+                            matching = id;
                             l = true;
+                            dcx = false;
                         }
                         else id++;
                     }
@@ -302,9 +316,21 @@ namespace dsdad
                         BHD5.EntryStruct modEntry = new BHD5.EntryStruct();
                         BHD5.EntryStruct oldEntry = dvdbnd[bhd5].buckets[bucket].entries[entry];
 
+                        BinaryWriter bdt = new BinaryWriter(File.Open(dsdir + "\\dvdbnd" + bhd5 + ".bdt", FileMode.Append));
+                        byte[] modFile;
+
+                        if (!dcx)
+                        {
+                            Log("Compressing \"" + Path.GetFileName(mod.Text) + "\" to \"" + Path.GetFileName(mod.Text) + ".dcx\".\r\n");
+                            modFile = rebuildDCX(File.ReadAllBytes(mod.Text));
+                        }
+                        else
+                        {
+                            modFile = File.ReadAllBytes(mod.Text);
+                        }
 
                         modEntry.hash = dvdbnd[bhd5].buckets[bucket].entries[entry].hash;
-                        modEntry.size = (UInt32)new FileInfo(mod.Text).Length;
+                        modEntry.size = (UInt32)modFile.Length;
                         modEntry.offset = (UInt64)new FileInfo(dsdir + "\\dvdbnd" + bhd5 + ".bdt").Length;
 
                         Log("Modifying \"dvdbnd" + bhd5 + ".bhd5\", bucket " + bucket + ", entry " + entry + "\r\n" +
@@ -312,12 +338,8 @@ namespace dsdad
                                 "New size: " + modEntry.size + ", new offset: " + modEntry.offset + "\r\n");
 
                         dvdbnd[bhd5].buckets[bucket].entries[entry] = modEntry;
-
-                        BinaryWriter bdt = new BinaryWriter(File.Open(dsdir + "\\dvdbnd" + bhd5 + ".bdt", FileMode.Append));
-                        byte[] modFile = File.ReadAllBytes(mod.Text);
-
+                        
                         bdt.Write(modFile);
-
                         bdt.Close();
 
                         modifiedBhd5[bhd5] |= l;
@@ -329,7 +351,7 @@ namespace dsdad
                 }
                 else
                 {
-                    text = "Could not install file \"" + mod.Text + "\" as it does not exist.";
+                    text = "Could not install file \"" + mod.Text + "\" as it does not exist.\r\n";
                     Log(text);
                     log.Text += text;
                 }
@@ -637,7 +659,8 @@ namespace dsdad
                                 }
                                 catch
                                 {
-                                    MessageBox.Show("Could not restore backup files. Restoration has to be done manually.");
+                                    MessageBox.Show("Could not restore backup files. Either the files are open in another program, or \"DATA\" is protected. Restoration has to be done manually.");
+                                    enableBtns();
                                     return;
                                 }
                                 log.Text += "Restored \"" + Path.GetFileName(dvdbnd + ".bhd5") + "\"\n";
@@ -646,6 +669,8 @@ namespace dsdad
                         else
                         {
                             MessageBox.Show("Cannot restore dvdbnd.bhd5 header files as their backup files are missing from \"Workspace\\backup\"");
+                            enableBtns();
+                            return;
                         }
 
                         if (File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Workspace\\backup\\initarchivesize.txt")))
@@ -665,7 +690,8 @@ namespace dsdad
                                 }
                                 catch
                                 {
-                                    MessageBox.Show("Could not restore backup files. Restoration has to be done manually.");
+                                    MessageBox.Show("Could not restore backup files. Either the files are open in another program, or \"DATA\" is protected. Restoration has to be done manually.");
+                                    enableBtns();
                                     return;
                                 }
 
@@ -675,6 +701,8 @@ namespace dsdad
                         else
                         {
                             MessageBox.Show("Cannot uninstall mods from the dvdbnd.bdt libraries, as one of the key backup files (\"Workspace\\backup\\initarchivesize.txt\") is missing.");
+                            enableBtns();
+                            return;
                         }
                     }
                     else
@@ -684,10 +712,15 @@ namespace dsdad
                         {
                             Directory.CreateDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Workspace\\backup\\"));
                         }
+                        catch (UnauthorizedAccessException)
+                        {
+                            MessageBox.Show("Could not create \"Workspace\\backup\" as \"Workspace\" is protected.");
+                        }
                         catch
                         {
                             MessageBox.Show("Could not create \"Workspace\\backup\".");
                         }
+                        enableBtns();
                         return;
                     }                    
 
@@ -961,8 +994,15 @@ namespace dsdad
 
             foreach (ListViewItem mod in listView1.Items)
             {
-                switch (Path.GetFileName(mod.Text))
+                string name = Path.GetFileName(mod.Text);
+                if (name.Substring(name.Length - 4) == ".dcx")
                 {
+                    name = name.Remove(name.Length - 4);
+                }
+
+                switch (name)
+                {
+                    /*
                     case "item.msgbnd.dcx": item.Add(mod.Text);
                         break;
                     case "menu.msgbnd.dcx": menu.Add(mod.Text);
@@ -976,6 +1016,21 @@ namespace dsdad
                     case "TalkFont24.tpf.dcx": talktpf.Add(mod.Text);
                         break;
                     case "menu_local.tpf.dcx": local.Add(mod.Text);
+                        break;
+                        */
+                    case "item.msgbnd": item.Add(mod.Text);
+                        break;
+                    case "menu.msgbnd": menu.Add(mod.Text);
+                        break;
+                    case "DSFont24.ccm": dsccm.Add(mod.Text);
+                        break;
+                    case "DSFont24.tpf": dstpf.Add(mod.Text);
+                        break;
+                    case "TalkFont24.ccm": talkccm.Add(mod.Text);
+                        break;
+                    case "TalkFont24.tpf": talktpf.Add(mod.Text);
+                        break;
+                    case "menu_local.tpf": local.Add(mod.Text);
                         break;
                     default:
                         break;
@@ -1142,6 +1197,58 @@ namespace dsdad
                 default:
                     break;
             }
+        }
+
+        private byte[] rebuildDCX(byte[] mod)
+        {
+            byte[] dcx;
+
+            Stream result = new MemoryStream();
+
+            DeflateStream zip = new DeflateStream(result, System.IO.Compression.CompressionMode.Compress, true);
+
+            zip.Write(mod, 0, mod.Length);
+            zip.Close();
+
+            byte[] compressed = new byte[result.Length];
+
+            result.Position = 0;
+            result.Read(compressed, 0, (int)result.Length);
+            result.Close();
+
+            dcx = new byte[78 + compressed.Length + 2];
+
+            Array.Copy(System.Text.Encoding.ASCII.GetBytes("DCX"), 0, dcx, 0, 3);
+            Array.Copy(toBigEndian(0x10000), 0, dcx, 4, 4);
+            Array.Copy(toBigEndian(0x18), 0, dcx, 8, 4);
+            Array.Copy(toBigEndian(0x24), 0, dcx, 12, 4);
+            Array.Copy(toBigEndian(0x24), 0, dcx, 16, 4);
+            Array.Copy(toBigEndian(0x2C), 0, dcx, 20, 4);
+            Array.Copy(System.Text.Encoding.ASCII.GetBytes("DCS"), 0, dcx, 24, 3);
+            Array.Copy(toBigEndian(mod.Length), 0, dcx, 28, 4);
+            Array.Copy(toBigEndian(compressed.Length + 4), 0, dcx, 32, 4);
+            Array.Copy(System.Text.Encoding.ASCII.GetBytes("DCP"), 0, dcx, 36, 3);
+            Array.Copy(System.Text.Encoding.ASCII.GetBytes("DFLT"), 0, dcx, 40, 4);
+            Array.Copy(toBigEndian(0x20), 0, dcx, 44, 4);
+            Array.Copy(toBigEndian(0x9000000), 0, dcx, 48, 4);
+            Array.Copy(toBigEndian(0x10100), 0, dcx, 64, 4);
+            Array.Copy(System.Text.Encoding.ASCII.GetBytes("DCA"), 0, dcx, 68, 3);
+            Array.Copy(toBigEndian(0x8), 0, dcx, 72, 4);
+            Array.Copy(toBigEndian(0x78DA0000), 0, dcx, 76, 4);
+
+            Array.Copy(compressed, 0, dcx, 78, compressed.Length);
+
+            return dcx;
+        }
+
+        private byte[] toBigEndian(int number)
+        {
+            byte[] bytes = new byte[4];
+
+            bytes = BitConverter.GetBytes(number);
+            Array.Reverse(bytes);
+
+            return bytes;
         }
     }
 }
