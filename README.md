@@ -31,5 +31,5 @@ v1.0.2
 
 v1.0.3
 ------
--Minor bug fixes.
--Added support for non-DCX compressed versions of the game files.
+* Minor bug fixes.
+* Added support for non-DCX compressed versions of the game files.
